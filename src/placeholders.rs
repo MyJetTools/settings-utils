@@ -66,6 +66,20 @@ pub fn get_tokens_with_placeholders<'s>(content: &'s str) -> Vec<ContentToken<'s
     result
 }
 
+pub fn get_secret_names(src: &str) -> Vec<&str> {
+    let mut result = Vec::new();
+    for itm in get_tokens_with_placeholders(src) {
+        match itm {
+            ContentToken::Text(_) => {}
+            ContentToken::Placeholder(secret_name) => {
+                result.push(secret_name);
+            }
+        }
+    }
+
+    result
+}
+
 pub fn has_usage_of_secret(src: &str, secret_name: &str) -> bool {
     for token in get_tokens_with_placeholders(src) {
         if let ContentToken::Placeholder(value) = token {
@@ -122,5 +136,21 @@ mod test {
         assert_eq!(tokens.get(1).unwrap().unwrap_as_text(), " and ");
         assert_eq!(tokens.get(2).unwrap().unwrap_as_placeholder(), "secret2");
         assert_eq!(tokens.get(3).unwrap().unwrap_as_text(), " is my secret");
+    }
+
+    #[test]
+    fn test_real_example() {
+        let yaml = r#"SeqConnString: ${SeqRust}
+        DefaultAccountBalance: 10000.0
+        DefaultAccountTradingGroup: Main
+        ServiceBusTcp: ${MySBTcp}
+        AccountsPersistenceGrpcUrl: ${AccountsPersistenceGrpcUrl}
+        AccountDefaultCurrency: USD"#;
+        let tokens = super::get_secret_names(yaml.as_ref());
+
+        assert_eq!(tokens.len(), 3);
+        assert_eq!(*tokens.get(0).unwrap(), "SeqRust");
+        assert_eq!(*tokens.get(1).unwrap(), "MySBTcp");
+        assert_eq!(*tokens.get(2).unwrap(), "AccountsPersistenceGrpcUrl");
     }
 }
